@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request, current_app
 from flask_cors import CORS
 import sqlite3
+import json
+
 
 device = Blueprint('device', __name__)
 cors = CORS(device, origins='*')
@@ -180,5 +182,41 @@ def device_status():
         return jsonify({'error': 'Failed to update deivce status'}), 500
 
 ####################################################
+
+############ update connected devices ####################
+def update_connected_devices(mac_address, connected_device):
+
+
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE new_devices SET connected_devices = ? WHERE mac_adress = ?",
+                       (json.dumps(connected_device), mac_address))
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+    
+
+@device.route('/api/update_connected_devices', methods=['POST'])
+def update_device():
+    # Extract data from the POST request
+    data = request.get_json()
+    mac_address = data.get('device_mac')
+    connected_device = data.get('connected_device')
+
+    if not mac_address or not connected_device:
+        return jsonify({'error': 'MAC address and connected devices are required'}), 400
+    
+    if update_connected_devices(mac_address, connected_device):
+        return jsonify({'message': 'connected devices updated successfully'}), 200
+    else:
+        return jsonify({'error': 'Failed to update connected devices'}), 500
+
+#######################################################
 
 

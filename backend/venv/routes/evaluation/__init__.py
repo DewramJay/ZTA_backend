@@ -1,6 +1,8 @@
 from flask import Blueprint, jsonify, request, current_app
 from flask_cors import CORS
 import sqlite3
+import json
+
 
 evaluation = Blueprint('evaluation', __name__)
 cors = CORS(evaluation, origins='*')
