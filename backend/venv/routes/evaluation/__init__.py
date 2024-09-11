@@ -25,3 +25,46 @@ def get_evaluation(mac_address):
         if conn:
             conn.close()
 
+
+############ update evaluation ####################
+def handle_evaluation(device_mac, target_ip, open_ports, result):
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+
+    # Check if the device exists in the database
+    cursor.execute("SELECT mac_address FROM evaluation WHERE mac_address = ?", (device_mac,))
+    mac = cursor.fetchone()
+
+    if mac:
+        # Update the existing device
+        cursor.execute("UPDATE evaluation SET open_ports = ?, password_status = ? WHERE mac_address = ?",
+                       (json.dumps(open_ports), result, device_mac))
+        conn.commit()
+        conn.close()
+        return "Device updated in the database"
+    else:
+        # Insert a new device into the database
+        cursor.execute("INSERT INTO evaluation (ip_address, mac_address, open_ports, password_status) VALUES (?, ?, ?, ?)",
+                       (target_ip, device_mac, json.dumps(open_ports), result))
+        conn.commit()
+        conn.close()
+        return "Data added to the database"
+
+# Create an API endpoint for handling the device information
+@evaluation.route('/update_evaluation', methods=['POST'])
+def update_device():
+    # Extract data from the POST request
+    data = request.get_json()
+    device_mac = data.get('device_mac')
+    target_ip = data.get('target_ip')
+    open_ports = data.get('open_ports')
+    result = data.get('result')
+
+    # Call the function to handle the device logic
+    response = handle_evaluation(device_mac, target_ip, open_ports, result)
+
+    # Return a JSON response
+    return jsonify({"message": response})
+
+#######################################################
+

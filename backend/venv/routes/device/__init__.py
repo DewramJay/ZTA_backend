@@ -118,6 +118,8 @@ def get_device(mac_address):
         if conn:
             conn.close()
 
+
+############ update device name #################
 def update_device_name(mac_address, device_name):
     try:
         conn = sqlite3.connect(database_path)
@@ -145,5 +147,38 @@ def device_name():
         return jsonify({'message': 'device name updated successfully'}), 200
     else:
         return jsonify({'error': 'Failed to update deivce name'}), 500
+
+####################################################
+
+############ update device status #################
+def update_device_status(mac_address, status):
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE new_devices SET status = ? WHERE mac_adress = ?", (status, mac_address))
+        conn.commit()
+        notify_clients(new_mac_address=mac_address)  # Notify clients after inserting new data
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+@device.route('/api/update_device_status', methods=['POST'])
+def device_status():
+    data = request.get_json()
+    mac_address = data.get('mac_address')
+    status = data.get('status')
+    
+    if not mac_address or not status:
+        return jsonify({'error': 'MAC address and device status are required'}), 400
+    
+    if update_device_status(mac_address, status):
+        return jsonify({'message': 'device status updated successfully'}), 200
+    else:
+        return jsonify({'error': 'Failed to update deivce status'}), 500
+
+####################################################
 
 
