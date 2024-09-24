@@ -219,4 +219,39 @@ def update_device():
 
 #######################################################
 
+################# get connected devices ###############
+def connected_devices(device_mac):
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+
+    try:
+        # Query to get the connected devices for the given MAC address
+        cursor.execute("SELECT connected_devices FROM new_devices WHERE mac_adress=?", (device_mac,))
+        row = cursor.fetchone()
+
+        if row and row[0]:
+            # Load the allowed devices from JSON string
+            allowed_devices = json.loads(row[0])
+            return set(allowed_devices)  # Return as a set for easy comparison
+
+        return set()  # Return an empty set if no devices are found
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return set()
+    except Exception as e:
+        print(f"Exception in get_allowed_devices: {e}")
+        return set()
+    finally:
+        conn.close()
+
+
+
+@device.route("/api/get_connected_devices/<mac_address>", methods=["GET"])
+def get_connected_devices(mac_address):
+    allowed = connected_devices(mac_address)
+    return jsonify({'allowed_devices': list(allowed)}), 200 
+    
+#######################################################
+
 

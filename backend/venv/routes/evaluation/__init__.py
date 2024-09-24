@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_cors import CORS
 import sqlite3
 import json
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
 
 
 evaluation = Blueprint('evaluation', __name__)
@@ -69,4 +71,25 @@ def update_device():
     return jsonify({"message": response})
 
 #######################################################
+
+
+############## re-evaluation ##################
+def re_evaluate_device(device_ip):
+    print("re evaluate !!!!!!!!!! : " + device_ip)
+
+# Schedule the evaluation job
+def schedule_evaluation(device_ip):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(lambda: re_evaluate_device(device_ip), 'interval', minutes=1)  # Re-evaluate every 30 minutes
+    scheduler.start()
+
+# Sample route to simulate device connection
+@evaluation.route('/api/re_evaluate/<device_ip>', methods=['POST'])
+def connect_device(device_ip):
+    print(device_ip)
+    print("ggggg")
+    # Logic to handle initial connection
+    schedule_evaluation(device_ip)  # Schedule recurring evaluation for this device
+    return jsonify({"message": "Device connected and scheduled for evaluation."})
+###############################################
 
