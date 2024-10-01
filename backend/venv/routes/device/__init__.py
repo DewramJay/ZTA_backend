@@ -254,4 +254,40 @@ def get_connected_devices(mac_address):
     
 #######################################################
 
+############## check device status ####################
+@device.route("/api/check_device_status", methods=["GET"])
+def check_device_status():
+    data = request.get_json()
+    ip_address = data.get('ip_address')
+    mac_address = data.get('mac_address')
+    
+    if not ip_address and not mac_address:
+        return jsonify({"error": "Please provide either IP address or MAC address"}), 400
+    
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        
+        if ip_address:
+            c.execute('SELECT status FROM new_devices WHERE ip_address = ?', (ip_address,))
+        elif mac_address:
+            c.execute('SELECT status FROM new_devices WHERE mac_address = ?', (mac_address,))
+        
+        result = c.fetchone()
+        if result:
+            status = result[0]
+            return jsonify({"device_status": status}), 200
+        else:
+            return jsonify({"error": "Device not found"}), 404
+    
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    
+    finally:
+        if conn:
+            conn.close()
+
+
+#######################################################
+
 
