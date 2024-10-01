@@ -74,22 +74,36 @@ def update_device():
 
 
 ############## re-evaluation ##################
-def re_evaluate_device(device_ip):
-    print("re evaluate !!!!!!!!!! : " + device_ip)
+def re_evaluate_device(app, device_ip, device_mac, hostname, interface_description):
+    # print("re evaluate !!!!!!!!!! : " + device_ip)
+    with app.app_context():
+        socketio = current_app.extensions['socketio']
+        socketio.emit('re_evaluate', {
+            'device_ip': device_ip,
+            'device_mac': device_mac,
+            'hostname': hostname,
+            'interface_description': interface_description
+        })
+        print(f"Scheduled re-evaluation triggered for device IP: {device_ip}")
+
 
 # Schedule the evaluation job
-def schedule_evaluation(device_ip):
+def schedule_evaluation(device_ip, device_mac, hostname, interface_description):
+    app = current_app._get_current_object()
     scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: re_evaluate_device(device_ip), 'interval', minutes=1)  # Re-evaluate every 30 minutes
+    scheduler.add_job(lambda: re_evaluate_device(app, device_ip, device_mac, hostname, interface_description), 'interval', minutes=1)  # Re-evaluate every 30 minutes
     scheduler.start()
 
 # Sample route to simulate device connection
-@evaluation.route('/api/re_evaluate/<device_ip>', methods=['POST'])
-def connect_device(device_ip):
-    print(device_ip)
-    print("ggggg")
+@evaluation.route('/api/re_evaluate', methods=['POST'])
+def connect_device():
+    data = request.get_json()
+    device_ip = data.get('ip_address')
+    device_mac = data.get('mac_address')
+    hostname = data.get('hostname')
+    interface_description = data.get('interface_description')
     # Logic to handle initial connection
-    schedule_evaluation(device_ip)  # Schedule recurring evaluation for this device
+    schedule_evaluation(device_ip, device_mac, hostname, interface_description)  # Schedule recurring evaluation for this device
     return jsonify({"message": "Device connected and scheduled for evaluation."})
 ###############################################
 
