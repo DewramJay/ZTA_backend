@@ -88,10 +88,17 @@ def re_evaluate_device(app, device_ip, device_mac, hostname, interface_descripti
 
 
 # Schedule the evaluation job
+# def schedule_evaluation(device_ip, device_mac, hostname, interface_description):
+#     app = current_app._get_current_object()
+#     scheduler = BackgroundScheduler()
+#     scheduler.add_job(lambda: re_evaluate_device(app, device_ip, device_mac, hostname, interface_description), 'interval', minutes=1)  # Re-evaluate every 30 minutes
+#     scheduler.start()
+
 def schedule_evaluation(device_ip, device_mac, hostname, interface_description):
     app = current_app._get_current_object()
     scheduler = BackgroundScheduler()
-    scheduler.add_job(lambda: re_evaluate_device(app, device_ip, device_mac, hostname, interface_description), 'interval', minutes=1)  # Re-evaluate every 30 minutes
+    run_time = datetime.now() + timedelta(minutes=1)  # Schedule the task to run after 1 minute
+    scheduler.add_job(lambda: re_evaluate_device(app, device_ip, device_mac, hostname, interface_description), 'date', run_date=run_time)  # Run once at the specified time
     scheduler.start()
 
 # Sample route to simulate device connection

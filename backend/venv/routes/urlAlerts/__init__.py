@@ -72,3 +72,21 @@ def delete_alert():
     finally:
         conn.close()
 
+
+################# get blacklist ip count ###################
+@urlAlert.route("/api/get_blacklist_mac_count", methods=["GET"])
+def get_blacklist_mac_count():
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT COUNT(DISTINCT blacklist_mac) FROM url_alerts')
+        count = c.fetchone()[0]
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+    return jsonify({"anomaly_count": count})
+
+############################################################
+

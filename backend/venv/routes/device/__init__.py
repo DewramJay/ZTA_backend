@@ -185,8 +185,6 @@ def device_status():
 
 ############ update connected devices ####################
 def update_connected_devices(mac_address, connected_device):
-
-
     try:
         conn = sqlite3.connect(database_path)
         cursor = conn.cursor()
@@ -289,5 +287,31 @@ def check_device_status():
 
 
 #######################################################
+
+################ set all devices inactive ##############
+
+# Function to update the status of all devices to 'inactive'
+def update_all_devices_status():
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE new_devices SET status = ?", ('inactive',))
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+# Route to update all devices' status to 'inactive'
+@device.route('/api/update_all_devices_status', methods=['POST'])
+def set_all_devices_inactive():
+    if update_all_devices_status():
+        return jsonify({'message': 'All devices updated to inactive successfully'}), 200
+    else:
+        return jsonify({'error': 'Failed to update device status'}), 500
+
+########################################################
 
 
