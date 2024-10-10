@@ -53,3 +53,19 @@ def update_weights():
     return jsonify({'message': 'Weights updated successfully'}), 200
 #############################################
 
+########### get weights ##############
+@scoreWeights.route("/api/get_weights", methods=["GET"])
+def get_users():
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT ml_weight, ea_weight, cr_weight, st_weight FROM weights')
+        devices = [{"ml_weight": row[0], "ea_weight": row[1], "cr_weight": row[2], "st_weight": row[3]} for row in c.fetchall()]
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+    return jsonify(devices)
+######################################
+

@@ -269,7 +269,7 @@ def check_device_status():
         if ip_address:
             c.execute('SELECT status FROM new_devices WHERE ip_address = ?', (ip_address,))
         elif mac_address:
-            c.execute('SELECT status FROM new_devices WHERE mac_address = ?', (mac_address,))
+            c.execute('SELECT status FROM new_devices WHERE mac_adress = ?', (mac_address,))
         
         result = c.fetchone()
         if result:
@@ -313,5 +313,122 @@ def set_all_devices_inactive():
         return jsonify({'error': 'Failed to update device status'}), 500
 
 ########################################################
+
+############# check connected device status #############
+def check_status(mac_address):
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+
+    # Query to check if the new_column equals 1 for the given MAC address
+    cursor.execute("SELECT connected_device_status FROM new_devices WHERE mac_adress = ?", (mac_address,))
+    result = cursor.fetchone()
+
+    conn.close()
+
+    # Check if we found a result and if the new_column is 1
+    if result and result[0] == 1:
+        return True
+    else:
+        return False
+
+
+
+@device.route('/api/check_connected_device_status', methods=['GET'])
+def check_connected_device_status():
+    data = request.get_json()
+    mac_address = data.get('mac_address')
+    
+    if not mac_address:
+        return jsonify({'error': 'MAC address is required'}), 400
+
+    # Call the function to check the status
+    status = check_status(mac_address)
+
+    return jsonify({'mac_address': mac_address, 'status': status})
+
+#########################################################
+
+############ update connected device status #################
+def update_connected_device_status(mac_address, connected_device_status):
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE new_devices SET connected_device_status = ? WHERE mac_adress = ?", (connected_device_status, mac_address))
+        conn.commit()
+        return True
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False
+    finally:
+        conn.close()
+
+@device.route('/api/update_connected_device_status', methods=['POST'])
+def connected_device_status():
+    data = request.get_json()
+    mac_address = data.get('mac_address')
+    connected_device_status = data.get('connected_device_status')
+    
+    if not mac_address or not device_name:
+        return jsonify({'error': 'MAC address and connected_device_status are required'}), 400
+    
+    if update_connected_device_status(mac_address, connected_device_status):
+        return jsonify({'message': 'connected_device_status updated successfully'}), 200
+    else:
+        return jsonify({'error': 'Failed to update connected_device_status'}), 500
+
+####################################################
+
+
+############ add a connected device ##############
+def add_connected_device(mac_address, device_to_add):
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+
+        # Retrieve the current connected devices for the given MAC address
+        cursor.execute("SELECT connected_devices FROM new_devices WHERE mac_adress = ?", (mac_address,))
+        result = cursor.fetchone()
+        if result is None:
+            return False, 'MAC address not found'
+
+        # Load the connected devices JSON string into a Python list
+        connected_devices = json.loads(result[0])
+
+        # Add the specified device if it's not already in the list
+        if device_to_add in connected_devices:
+            return False, 'Device is already in the connected devices list'
+        
+        connected_devices.append(device_to_add)
+
+        # Update the connected_devices in the database
+        cursor.execute("UPDATE new_devices SET connected_devices = ? WHERE mac_adress = ?",
+                       (json.dumps(connected_devices), mac_address))
+        conn.commit()
+        return True, 'Device added successfully'
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False, 'Database error'
+    finally:
+        conn.close()
+
+    
+
+@device.route('/api/add_connected_device', methods=['POST'])
+def connected_device():
+    # Extract data from the POST request
+    data = request.get_json()
+    mac_address = data.get('device_mac')
+    device_to_add = data.get('connected_device')
+
+    if not mac_address or not device_to_add:
+        return jsonify({'error': 'MAC address and device to add are required'}), 400
+    
+    success, message = add_connected_device(mac_address, device_to_add)
+    if success:
+        return jsonify({'message': message}), 200
+    else:
+        return jsonify({'error': message}), 500
+#####################################################
 
 

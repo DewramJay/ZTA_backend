@@ -59,7 +59,7 @@ def delete_alert():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute("DELETE FROM url_alerts")
+        c.execute("DELETE FROM illegal_connection_alerts ")
         conn.commit()
         return jsonify({"status": "success"})
 
@@ -73,20 +73,20 @@ def delete_alert():
         conn.close()
 
 
-# ################# get blacklist ip count ###################
-# @urlAlert.route("/api/get_blacklist_mac_count", methods=["GET"])
-# def get_blacklist_mac_count():
-#     try:
-#         conn = sqlite3.connect(database_path)
-#         c = conn.cursor()
-#         c.execute('SELECT COUNT(DISTINCT blacklist_mac) FROM url_alerts')
-#         count = c.fetchone()[0]
-#     except sqlite3.Error as e:
-#         return jsonify({"error": str(e)}), 500
-#     finally:
-#         if conn:
-#             conn.close()
-#     return jsonify({"anomaly_count": count})
+################# get blacklist ip count ###################
+@illegalConnection.route("/api/get_illegal_connection_count", methods=["GET"])
+def get_blacklist_mac_count():
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT COUNT(DISTINCT dst_mac) FROM illegal_connection_alerts')
+        count = c.fetchone()[0]
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+    return jsonify({"illegal_connection_count": count})
 
-# ############################################################
+############################################################
 
