@@ -9,6 +9,21 @@ cors = CORS(scoreWeights, origins='*')
 database_path = '/home/kali/Desktop/project/eval/ZTA_main_2/main/score_model.db'
 
 
+def notify_score_weights():
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT ml_weight, ea_weight, cr_weight, st_weight FROM weights')
+        weights = [{"ml_weight": row[0], "ea_weight": row[1], "cr_weight": row[2], "st_weight": row[3]} for row in c.fetchall()]
+        socketio = current_app.extensions['socketio']
+        socketio.emit('weights', weights)
+    except sqlite3.Error as e:
+        print("Error fetching data:", e)
+    finally:
+        if conn:
+            conn.close()
+
+
 ############## update weight #####################
 @scoreWeights.route('/api/update_weights', methods=['PUT'])
 def update_weights():
@@ -46,6 +61,7 @@ def update_weights():
         query = f"UPDATE weights SET {', '.join(update_fields)} WHERE id = 1"
         cursor.execute(query, values)
         conn.commit()
+        notify_score_weights()
     
     # Close the connection
     conn.close()

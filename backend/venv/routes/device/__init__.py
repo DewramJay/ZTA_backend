@@ -59,11 +59,13 @@ def add_device():
     mac_address = data.get('mac_address')
     device_name = data.get('device_name')
     status = data.get('status')
+    connected_device_status = 0
+    connected_devices = []
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('INSERT INTO new_devices (ip_address, mac_adress, device_name, status) VALUES (?, ?, ?, ?)', 
-                  (ip_address, mac_address, device_name, status))
+        c.execute('INSERT INTO new_devices (ip_address, mac_adress, device_name, status, connected_devices, connected_device_status) VALUES (?, ?, ?, ?, ?, ?)', 
+                  (ip_address, mac_address, device_name, status, json.dumps(connected_devices), connected_device_status))
         conn.commit()
         notify_clients(new_mac_address=mac_address)  # Notify clients after inserting new data
         return jsonify({"status": "success"})
@@ -430,5 +432,59 @@ def connected_device():
     else:
         return jsonify({'error': message}), 500
 #####################################################
+
+
+############ remove a connected devices ####################
+def remove_connected_device(mac_address, device_to_remove):
+    try:
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+
+        # Retrieve the current connected devices for the given MAC address
+        cursor.execute("SELECT connected_devices FROM new_devices WHERE mac_adress = ?", (mac_address,))
+        result = cursor.fetchone()
+        if result is None:
+            return False, 'MAC address not found'
+
+        # Load the connected devices JSON string into a Python list
+        connected_devices = json.loads(result[0])
+
+        # Remove the specified device from the list, if present
+        if device_to_remove in connected_devices:
+            connected_devices.remove(device_to_remove)
+        else:
+            return False, 'Device not found in the connected devices list'
+
+        # Update the connected_devices in the database
+        cursor.execute("UPDATE new_devices SET connected_devices = ? WHERE mac_adress = ?",
+                       (json.dumps(connected_devices), mac_address))
+        conn.commit()
+        return True, 'Device removed successfully'
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return False, 'Database error'
+    finally:
+        conn.close()
+
+    
+
+@device.route('/api/remove_connected_device', methods=['POST'])
+def remove_device():
+    # Extract data from the POST request
+    data = request.get_json()
+    mac_address = data.get('device_mac')
+    device_to_remove = data.get('connected_device')
+
+    if not mac_address or not device_to_remove:
+        return jsonify({'error': 'MAC address and device to remove are required'}), 400
+    
+    success, message = remove_connected_device(mac_address, device_to_remove)
+    if success:
+        return jsonify({'message': message}), 200
+    else:
+        return jsonify({'error': message}), 500
+
+#################################################################
 
 

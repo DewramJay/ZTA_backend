@@ -21,19 +21,19 @@ def get_users():
             conn.close()
     return jsonify(devices)
 
-# def notify_alerts():
-#     try:
-#         conn = sqlite3.connect(database_path)
-#         c = conn.cursor()
-#         c.execute('SELECT mac_address, blacklist_mac  FROM url_alerts')
-#         alerts = [{"mac_address": row[0], "blacklist_mac": row[1]} for row in c.fetchall()]
-#         socketio = current_app.extensions['socketio']
-#         socketio.emit('alert', alerts)
-#     except sqlite3.Error as e:
-#         print("Error fetching data:", e)
-#     finally:
-#         if conn:
-#             conn.close()
+def notify_illegal_alerts():
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT id, src_mac, dst_mac FROM illegal_connection_alerts')
+        alerts = [{"id": row[0], "src_mac": row[1], "dst_mac": row[2]} for row in c.fetchall()]
+        socketio = current_app.extensions['socketio']
+        socketio.emit('illegal_connection', alerts)
+    except sqlite3.Error as e:
+        print("Error fetching data:", e)
+    finally:
+        if conn:
+            conn.close()
 
 @illegalConnection.route("/api/add_illegal_connection", methods=["POST"])
 def add_alert():
@@ -46,7 +46,7 @@ def add_alert():
         c.execute('INSERT INTO illegal_connection_alerts (src_mac, dst_mac) VALUES (?, ?)', 
                   (src_mac, dst_mac))
         conn.commit()
-        # notify_alerts()  # Notify clients after inserting new data
+        notify_illegal_alerts()
         return jsonify({"status": "success"})
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
@@ -89,4 +89,76 @@ def get_blacklist_mac_count():
     return jsonify({"illegal_connection_count": count})
 
 ############################################################
+
+@illegalConnection.route("/api/delete_specific_alert", methods=["DELETE"])
+def delete_specific_alert():
+    data = request.get_json()
+    src_mac = data.get('src_mac')
+    dst_mac = data.get('dst_mac')
+    
+    if not src_mac or not dst_mac:
+        return jsonify({"error": "src_mac and dst_mac are required"}), 400
+    
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        # Delete the specific row based on src_mac and dst_mac
+        c.execute("DELETE FROM illegal_connection_alerts WHERE src_mac = ? AND dst_mac = ?", 
+                  (src_mac, dst_mac))
+        conn.commit()
+        notify_illegal_alerts()
+        
+        if c.rowcount == 0:
+            return jsonify({"error": "No matching row found"}), 404
+
+        return jsonify({"status": "success"}), 200
+
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+################# get blacklist ip count for specific mac ###################
+@illegalConnection.route("/api/get_related_mac_count", methods=["GET"])
+def get_related_mac_count():
+    mac_address = request.args.get('mac')
+    
+    if not mac_address:
+        return jsonify({"error": "MAC address is required"}), 400
+    
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+
+        # Get distinct dst_mac where given mac is in src_mac
+        c.execute('''
+            SELECT DISTINCT dst_mac 
+            FROM illegal_connection_alerts 
+            WHERE src_mac = ?
+        ''', (mac_address,))
+        dst_macs_from_src = set(row[0] for row in c.fetchall())
+
+        # Get distinct src_mac where given mac is in dst_mac
+        c.execute('''
+            SELECT DISTINCT src_mac 
+            FROM illegal_connection_alerts 
+            WHERE dst_mac = ?
+        ''', (mac_address,))
+        src_macs_from_dst = set(row[0] for row in c.fetchall())
+
+        # Combine both sets to get unique MAC addresses
+        unique_macs = dst_macs_from_src.union(src_macs_from_dst)
+        unique_mac_count = len(unique_macs)
+
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+    
+    return jsonify({"related_mac_count": unique_mac_count})
+
+#############################################################################
 
