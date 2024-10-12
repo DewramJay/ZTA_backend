@@ -103,7 +103,7 @@ def get_blacklist_mac_count_by_mac():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT COUNT(DISTINCT blacklist_mac) FROM url_alerts WHERE blacklist_mac = ?', (mac_address,))
+        c.execute('SELECT COUNT(DISTINCT blacklist_mac) FROM url_alerts WHERE mac_address = ?', (mac_address,))
         count = c.fetchone()[0]
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
