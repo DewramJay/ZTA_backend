@@ -11,12 +11,14 @@ def create_app():
     from .evaluation import evaluation
     from .scoreWeights import scoreWeights
     from .illegalConnection import illegalConnection
+    from .trustScore import trustScore
 
     app.register_blueprint(device)
     app.register_blueprint(urlAlert)
     app.register_blueprint(evaluation)
     app.register_blueprint(scoreWeights)
     app.register_blueprint(illegalConnection)
+    app.register_blueprint(trustScore)
     
     # Other app configuration and initialization
     

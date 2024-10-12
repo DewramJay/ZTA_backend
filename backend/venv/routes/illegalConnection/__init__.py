@@ -123,7 +123,8 @@ def delete_specific_alert():
 ################# get blacklist ip count for specific mac ###################
 @illegalConnection.route("/api/get_related_mac_count", methods=["GET"])
 def get_related_mac_count():
-    mac_address = request.args.get('mac')
+    data = request.get_json()
+    mac_address = data.get('mac_address')
     
     if not mac_address:
         return jsonify({"error": "MAC address is required"}), 400

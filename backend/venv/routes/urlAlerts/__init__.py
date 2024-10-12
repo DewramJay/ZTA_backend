@@ -90,3 +90,27 @@ def get_blacklist_mac_count():
 
 ############################################################
 
+
+######################## get distinct blacklist ip count #########################
+@urlAlert.route("/api/get_blacklist_mac_count_by_mac", methods=["GET"])
+def get_blacklist_mac_count_by_mac():
+    data = request.get_json()
+    mac_address = data.get('mac_address')
+    
+    if not mac_address:
+        return jsonify({"error": "MAC address parameter is missing"}), 400
+    
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        c.execute('SELECT COUNT(DISTINCT blacklist_mac) FROM url_alerts WHERE blacklist_mac = ?', (mac_address,))
+        count = c.fetchone()[0]
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+    
+    return jsonify({"anomaly_count": count})
+
+
