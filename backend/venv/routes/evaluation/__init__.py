@@ -42,20 +42,20 @@ def handle_evaluation(device_mac, target_ip, open_ports, result):
     if mac:
         # Update the existing device
         cursor.execute("UPDATE evaluation SET open_ports = ?, password_status = ? WHERE mac_address = ?",
-                       (json.dumps(open_ports), result, device_mac))
+                       (open_ports, result, device_mac))
         conn.commit()
         conn.close()
         return "Device updated in the database"
     else:
         # Insert a new device into the database
         cursor.execute("INSERT INTO evaluation (ip_address, mac_address, open_ports, password_status) VALUES (?, ?, ?, ?)",
-                       (target_ip, device_mac, json.dumps(open_ports), result))
+                       (target_ip, device_mac, open_ports, result))
         conn.commit()
         conn.close()
         return "Data added to the database"
 
 # Create an API endpoint for handling the device information
-@evaluation.route('/update_evaluation', methods=['POST'])
+@evaluation.route('/api/update_evaluation', methods=['POST'])
 def update_device():
     # Extract data from the POST request
     data = request.get_json()
@@ -65,7 +65,7 @@ def update_device():
     result = data.get('result')
 
     # Call the function to handle the device logic
-    response = handle_evaluation(device_mac, target_ip, open_ports, result)
+    response = handle_evaluation(device_mac, target_ip, json.dumps(open_ports), result)
 
     # Return a JSON response
     return jsonify({"message": response})
