@@ -166,19 +166,20 @@ def get_related_mac_count():
             FROM illegal_connection_alerts 
             WHERE src_mac = ?
         ''', (mac_address,))
-        dst_macs_from_src = set(row[0] for row in c.fetchall())
+        unique_macs = set(row[0] for row in c.fetchall())
 
-        # Get distinct src_mac where given mac is in dst_mac
-        c.execute('''
-            SELECT DISTINCT src_mac 
-            FROM illegal_connection_alerts 
-            WHERE dst_mac = ?
-        ''', (mac_address,))
-        src_macs_from_dst = set(row[0] for row in c.fetchall())
+        # # Get distinct src_mac where given mac is in dst_mac
+        # c.execute('''
+        #     SELECT DISTINCT src_mac 
+        #     FROM illegal_connection_alerts 
+        #     WHERE dst_mac = ?
+        # ''', (mac_address,))
+        # src_macs_from_dst = set(row[0] for row in c.fetchall())
 
         # Combine both sets to get unique MAC addresses
-        unique_macs = dst_macs_from_src.union(src_macs_from_dst)
-        unique_mac_count = len(unique_macs)
+        # unique_macs = dst_macs_from_src.union(src_macs_from_dst)
+
+        mac_count = len(unique_macs)
 
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
@@ -186,7 +187,33 @@ def get_related_mac_count():
         if conn:
             conn.close()
     
-    return jsonify({"related_mac_count": unique_mac_count})
+    return jsonify({"related_mac_count": mac_count})
 
 #############################################################################
 
+@illegalConnection.route("/api/delete_alerts_by_src_mac", methods=["DELETE"])
+def delete_alerts_by_src_mac():
+    data = request.get_json()
+    src_mac = data.get('src_mac')
+    
+    if not src_mac:
+        return jsonify({"error": "src_mac is required"}), 400
+    
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        # Delete all rows where src_mac matches the given value
+        c.execute("DELETE FROM illegal_connection_alerts WHERE src_mac = ?", (src_mac,))
+        conn.commit()
+        notify_illegal_alerts()
+        
+        if c.rowcount == 0:
+            return jsonify({"error": "No matching rows found"}), 404
+
+        return jsonify({"status": "success"}), 200
+
+    except sqlite3.Error as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
