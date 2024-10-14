@@ -12,8 +12,24 @@ def get_users():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT id, src_mac, dst_mac FROM illegal_connection_alerts')
-        devices = [{"id": row[0], "src_mac": row[1], "dst_mac": row[2]} for row in c.fetchall()]
+        # c.execute('SELECT id, src_mac, dst_mac FROM illegal_connection_alerts')
+        # devices = [{"id": row[0], "src_mac": row[1], "dst_mac": row[2]} for row in c.fetchall()]
+
+        query = '''
+            SELECT DISTINCT ia.src_mac, nd1.device_name AS src_device_name,
+                    ia.dst_mac, nd2.device_name AS dst_device_name
+            FROM illegal_connection_alerts ia
+            LEFT JOIN new_devices nd1 ON ia.src_mac = nd1.mac_adress
+            LEFT JOIN new_devices nd2 ON ia.dst_mac = nd2.mac_adress
+        '''
+
+        c.execute(query)
+
+        # Fetch results including both device names
+        devices = [{"src_mac": row[0], 
+                    "src_device_name": row[1], 
+                    "dst_mac": row[2], 
+                    "dst_device_name": row[3]} for row in c.fetchall()]
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -25,8 +41,19 @@ def notify_illegal_alerts():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT id, src_mac, dst_mac FROM illegal_connection_alerts')
-        alerts = [{"id": row[0], "src_mac": row[1], "dst_mac": row[2]} for row in c.fetchall()]
+        query = '''
+            SELECT DISTINCT ia.src_mac, nd1.device_name AS src_device_name,
+                            ia.dst_mac, nd2.device_name AS dst_device_name
+            FROM illegal_connection_alerts ia
+            LEFT JOIN new_devices nd1 ON ia.src_mac = nd1.mac_adress
+            LEFT JOIN new_devices nd2 ON ia.dst_mac = nd2.mac_adress
+        '''
+
+        c.execute(query)
+        alerts = [{"src_mac": row[0], 
+                    "src_device_name": row[1], 
+                    "dst_mac": row[2], 
+                    "dst_device_name": row[3]} for row in c.fetchall()]
         socketio = current_app.extensions['socketio']
         socketio.emit('illegal_connection', alerts)
     except sqlite3.Error as e:

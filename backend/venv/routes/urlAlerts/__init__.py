@@ -12,8 +12,18 @@ def get_users():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT mac_address, blacklist_mac FROM url_alerts')
-        devices = [{"mac_address": row[0], "blacklist_mac": row[1]} for row in c.fetchall()]
+         # Join the url_alerts with new_devices to get device_name
+        query = '''
+            SELECT ua.mac_address, ua.blacklist_mac, nd.device_name
+            FROM url_alerts ua
+            LEFT JOIN new_devices nd ON ua.mac_address = nd.mac_adress
+        '''
+        
+        c.execute(query)
+        
+        # Fetch results and include device_name
+        devices = [{"mac_address": row[0], "blacklist_mac": row[1], "device_name": row[2]} for row in c.fetchall()]
+    
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -25,8 +35,17 @@ def notify_alerts():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT mac_address, blacklist_mac  FROM url_alerts')
-        alerts = [{"mac_address": row[0], "blacklist_mac": row[1]} for row in c.fetchall()]
+         # Join the url_alerts with new_devices to get device_name
+        query = '''
+            SELECT ua.mac_address, ua.blacklist_mac, nd.device_name
+            FROM url_alerts ua
+            LEFT JOIN new_devices nd ON ua.mac_address = nd.mac_adress
+        '''
+        
+        c.execute(query)
+        
+        # Fetch results and include device_name
+        alerts = [{"mac_address": row[0], "blacklist_mac": row[1], "device_name": row[2]} for row in c.fetchall()]
         socketio = current_app.extensions['socketio']
         socketio.emit('alert', alerts)
     except sqlite3.Error as e:
