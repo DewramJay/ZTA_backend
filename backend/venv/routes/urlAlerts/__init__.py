@@ -133,3 +133,33 @@ def get_blacklist_mac_count_by_mac():
     return jsonify({"anomaly_count": count})
 
 
+
+#################### delete specific alerts ######################
+@urlAlert.route("/api/delete_specific_alert", methods=["DELETE"])
+def delete_specific_alert():
+    try:
+        data = request.get_json()
+        mac_address = data.get('mac_address')
+
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+
+        if mac_address:
+            c.execute("DELETE FROM url_alerts WHERE mac_address = ?", (mac_address,))
+        else:
+            print("mac address is needed")
+
+        conn.commit()
+        return jsonify({"status": "success"})
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"status": "error", "message": "Database error"})
+
+    except Exception as e:
+        print(f"Exception in delete_alerts: {e}")
+        return jsonify({"status": "error", "message": "Exception occurred"})
+
+    finally:
+        conn.close()
+##################################################################

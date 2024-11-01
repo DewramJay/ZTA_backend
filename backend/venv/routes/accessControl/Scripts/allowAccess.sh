@@ -9,13 +9,10 @@ fi
 # MAC address passed as the first argument
 MAC_ADDRESS=$1
 
-# Block communication between wlan0 and eth0 for the given MAC address
-iptables -D FORWARD -i wlan0 -o eth0 -m mac --mac-source $MAC_ADDRESS -j DROP
+# Loop to remove all matching rules
+while iptables -D FORWARD -i wlan0 -o eth0 -m mac --mac-source $MAC_ADDRESS -j DROP; do
+    echo "Removed one instance of rule blocking MAC address $MAC_ADDRESS from communicating between wlan0 and eth0."
+done
 
-# Confirm the rule was added
-if [ $? -eq 0 ]; then
-    echo "Successfully blocked MAC address $MAC_ADDRESS from communicating between wlan0 and eth0."
-else
-    echo "Failed to add iptables rule."
-    exit 1
-fi
+# Confirm completion
+echo "All matching iptables rules for MAC address $MAC_ADDRESS have been removed."

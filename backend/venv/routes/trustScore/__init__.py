@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_cors import CORS
 import sqlite3
 import json
+import requests
 
 
 trustScore = Blueprint('trustScore', __name__)
@@ -30,14 +31,23 @@ def calculate_and_update_total(mac_address):
         cursor = conn.cursor()
 
         # Fetch the current values of ml, ea, cr, st
-        cursor.execute('SELECT ml, ea, cr, st FROM trust_score WHERE mac_address = ?', (mac_address,))
+        cursor.execute('SELECT ml, ea, cr, st,check_status FROM trust_score WHERE mac_address = ?', (mac_address,))
         row = cursor.fetchone()
 
         if row:
-            ml, ea, cr, st = row
+            ml, ea, cr, st, check_status = row
 
             # Calculate the new total by subtracting ml, ea, cr, and st from the previous total
-            new_total = 0.4379 * ml + 0.1879 * ea + 0.3126 * cr + 0.06275 * st  # Modify this logic as per your requirement
+            new_total = 0.4379 * ml + 0.1879 * ea + 0.3126 * cr + 0.06275 * st  
+            print("check_status")
+            print(check_status)
+            
+            if new_total < 0.6 and check_status == 0 :
+                update_status_in_db(1, mac_address)
+                block_mac(mac_address)
+            elif new_total >= 0.6 and check_status == 1 :
+                update_status_in_db(0, mac_address)
+                allow_mac(mac_address)
 
             # Update the total in the database
             cursor.execute('UPDATE trust_score SET total = ? WHERE mac_address = ?', (new_total, mac_address))
@@ -54,13 +64,26 @@ def block_mac(mac_address):
     """ Function to block the MAC address by calling the block-mac endpoint """
     try:
         # Make a GET request to the block-mac endpoint
-        response = requests.get(f'http://localhost:2000/block_access/{mac_address}')
+        response = requests.get(f'http://localhost:2000/api/block_access/{mac_address}')
         if response.status_code == 200:
             print(f"Successfully blocked MAC address {mac_address}")
         else:
             print(f"Failed to block MAC address {mac_address}: {response.text}")
     except Exception as e:
         print(f"Error blocking MAC address: {e}")
+
+########## allow access #################
+def allow_mac(mac_address):
+    """ Function to block the MAC address by calling the block-mac endpoint """
+    try:
+        # Make a GET request to the block-mac endpoint
+        response = requests.get(f'http://localhost:2000/api/allow_access/{mac_address}')
+        if response.status_code == 200:
+            print(f"Successfully allowed MAC address {mac_address}")
+        else:
+            print(f"Failed to allow MAC address {mac_address}: {response.text}")
+    except Exception as e:
+        print(f"Error allowing MAC address: {e}")
 
 
 ################ update trust score ###################
@@ -130,7 +153,7 @@ def add_or_update_trust_score():
 
 
 
-########### get score ##############
+########### get scores ##############
 @trustScore.route("/api/get_score", methods=["GET"])
 def get_users():
     try:
@@ -145,4 +168,75 @@ def get_users():
             conn.close()
     return jsonify(scores)
 ######################################
+
+############ get score ###############
+@trustScore.route('/api/trust_score/<mac_address>', methods=['GET'])
+def get_trust_score(mac_address):
+    try:
+        # Connect to the database
+        conn = sqlite3.connect(database_path)
+        cursor = conn.cursor()
+
+        # Retrieve the record based on mac_address
+        cursor.execute('SELECT * FROM trust_score WHERE mac_address = ?', (mac_address,))
+        row = cursor.fetchone()
+
+        # Check if a record was found
+        if row:
+            # Map the row to a dictionary
+            trust_score = {
+                'mac_address': row[0],
+                'ml': row[1],
+                'ea': row[2],
+                'cr': row[3],
+                'st': row[4],
+                'total': row[5]
+            }
+            conn.close()
+            return jsonify(trust_score), 200
+        else:
+            conn.close()
+            return jsonify({'message': 'No record found for this MAC address'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+######################################
+
+########### update check status ##########
+def update_status_in_db(new_status, mac_address):
+    # Connect to the database
+    connection = sqlite3.connect(database_path)
+    cursor = connection.cursor()
+    
+    # SQL query to update the status column
+    if mac_address is not None:
+        query = "UPDATE trust_score SET check_status = ? WHERE mac_address = ?"
+        cursor.execute(query, (new_status, mac_address))
+    else:
+        conn.close()
+        return jsonify({'message': 'mac address is required'}), 400
+    
+    # Commit the transaction and close the connection
+    connection.commit()
+    connection.close()
+
+@trustScore.route('/api/update_check_status', methods=['POST'])
+def update_status():
+    # Get the new status and optional row_id from the request JSON data
+    data = request.json
+    new_status = data.get("status")
+    mac_address = data.get("mac_address")  # Optional row ID to update specific row
+    
+    if new_status is None:
+        return jsonify({"error": "Status value is required"}), 400
+    
+    try:
+        # Call function to update the status in the database
+        update_status_in_db(new_status, mac_address)
+        return jsonify({"message": "Status updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+##########################################
 

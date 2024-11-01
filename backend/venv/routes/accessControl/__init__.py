@@ -15,7 +15,7 @@ database_path = '/home/kali/Desktop/project/eval/ZTA_main_2/main/score_model.db'
 def run_script1(mac_address):
     try:
         # Path to script1.sh
-        script_path = "/home/kali/Desktop/project/ZTA_backend/backend/venv/routes/accessControl/Scripts/allowAccess.sh"
+        script_path = "/home/kali/Desktop/project/ZTA_backend/backend/venv/routes/accessControl/Scripts/blockAccess.sh"
         
         # Run the bash script with MAC address as an argument
         result = subprocess.run(['sudo', 'bash', script_path, mac_address], capture_output=True, text=True)
@@ -30,11 +30,11 @@ def run_script1(mac_address):
 
 
 # Endpoint to run script2.sh with MAC address as parameter
-@accessControl.route('/give_access/<mac_address>', methods=['GET'])
+@accessControl.route('/api/allow_access/<mac_address>', methods=['GET'])
 def run_script2(mac_address):
     try:
         # Path to script2.sh
-        script_path = "/home/kali/Desktop/project/ZTA_backend/backend/venv/routes/accessControl/Scripts/blockAccess.sh"
+        script_path = "/home/kali/Desktop/project/ZTA_backend/backend/venv/routes/accessControl/Scripts/allowAccess.sh"
         
         # Run the bash script with MAC address as an argument
         result = subprocess.run(['sudo', 'bash', script_path, mac_address], capture_output=True, text=True)

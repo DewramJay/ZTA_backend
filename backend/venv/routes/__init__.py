@@ -13,6 +13,7 @@ def create_app():
     from .illegalConnection import illegalConnection
     from .trustScore import trustScore
     from .accessControl import accessControl
+    from .time import time
 
     app.register_blueprint(device)
     app.register_blueprint(urlAlert)
@@ -21,6 +22,7 @@ def create_app():
     app.register_blueprint(illegalConnection)
     app.register_blueprint(trustScore)
     app.register_blueprint(accessControl)
+    app.register_blueprint(time)
     
     # Other app configuration and initialization
     
