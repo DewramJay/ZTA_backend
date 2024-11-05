@@ -52,6 +52,29 @@ def notify_clients(new_mac_address=None):
         if conn:
             conn.close()
 
+
+########## add trust score #################
+def add_trust_score(mac_address):
+    payload = {
+        "mac_address": mac_address,
+        "ml" : 1,
+        "ea" : 1,
+        "cr" : 1,
+        "st" : 1,
+        "total" : 1,
+        "check_status" : 0
+    }
+    try:
+        # Make a GET request to the block-mac endpoint
+        url = 'http://localhost:2000/api/trust_score'
+        response = requests.post(url, json=payload)
+        if response.status_code == 200:
+            print(f"Successfully trustscore added to {mac_address}")
+        else:
+            print(f"Failed to add trust score to {mac_address}: {response.text}")
+    except Exception as e:
+        print(f"Error blocking MAC address: {e}")
+
 @device.route("/api/add_device", methods=["POST"])
 def add_device():
     data = request.get_json()
@@ -67,6 +90,9 @@ def add_device():
         c.execute('INSERT INTO new_devices (ip_address, mac_adress, device_name, status, connected_devices, connected_device_status) VALUES (?, ?, ?, ?, ?, ?)', 
                   (ip_address, mac_address, device_name, status, json.dumps(connected_devices), connected_device_status))
         conn.commit()
+        ####
+
+        ####        
         notify_clients(new_mac_address=mac_address)  # Notify clients after inserting new data
         return jsonify({"status": "success"})
     except sqlite3.Error as e:

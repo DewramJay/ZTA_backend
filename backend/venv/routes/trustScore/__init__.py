@@ -14,8 +14,8 @@ def notify_score():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT mac_address, ml, ea, cr, st, total FROM trust_score')
-        scores = [{"mac_address": row[0], "ml": row[1], "ea": row[2], "cr": row[3], "st": row[4], "total": row[5]} for row in c.fetchall()]
+        c.execute('SELECT mac_address, ml, ea, cr, st, total, check_status  FROM trust_score')
+        scores = [{"mac_address": row[0], "ml": row[1], "ea": row[2], "cr": row[3], "st": row[4], "total": row[5],  "check_status": row[6]} for row in c.fetchall()]
         socketio = current_app.extensions['socketio']
         socketio.emit('scores', scores)
     except sqlite3.Error as e:
@@ -31,7 +31,7 @@ def calculate_and_update_total(mac_address):
         cursor = conn.cursor()
 
         # Fetch the current values of ml, ea, cr, st
-        cursor.execute('SELECT ml, ea, cr, st,check_status FROM trust_score WHERE mac_address = ?', (mac_address,))
+        cursor.execute('SELECT ml, ea, cr, st, check_status FROM trust_score WHERE mac_address = ?', (mac_address,))
         row = cursor.fetchone()
 
         if row:
@@ -39,8 +39,6 @@ def calculate_and_update_total(mac_address):
 
             # Calculate the new total by subtracting ml, ea, cr, and st from the previous total
             new_total = 0.4379 * ml + 0.1879 * ea + 0.3126 * cr + 0.06275 * st  
-            print("check_status")
-            print(check_status)
             
             if new_total < 0.6 and check_status == 0 :
                 update_status_in_db(1, mac_address)
@@ -109,7 +107,7 @@ def add_or_update_trust_score():
         
         if row:
             # If a record exists, map it to a dictionary
-            existing_record = {'mac_address': row[0], 'ml': row[1], 'ea': row[2], 'cr': row[3], 'st': row[4], 'total': row[5]}
+            existing_record = {'mac_address': row[0], 'ml': row[1], 'ea': row[2], 'cr': row[3], 'st': row[4], 'total': row[5], 'check_status': row[6]}
         else:
             existing_record = None
 
@@ -120,6 +118,7 @@ def add_or_update_trust_score():
             cr = data.get('cr', existing_record['cr'])
             st = data.get('st', existing_record['st'])
             total = data.get('total', existing_record['total'])
+            check_status = data.get('check_status', existing_record['check_status'])
 
             cursor.execute('''
                 UPDATE trust_score
@@ -134,11 +133,12 @@ def add_or_update_trust_score():
             cr = data.get('cr', 1)
             st = data.get('st', 1)
             total = data.get('total', 1)
+            check_status = data.get('check_status', 0)
 
             cursor.execute('''
-                INSERT INTO trust_score (mac_address, ml, ea, cr, st, total)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (mac_address, ml, ea, cr, st, total))        
+                INSERT INTO trust_score (mac_address, ml, ea, cr, st, total, check_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (mac_address, ml, ea, cr, st, total, check_status))        
 
         conn.commit()
         conn.close()
@@ -159,8 +159,8 @@ def get_users():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT mac_address, ml, ea, cr, st, total FROM trust_score')
-        scores = [{"mac_address": row[0], "ml": row[1], "ea": row[2], "cr": row[3], "st": row[4], "total": row[5]} for row in c.fetchall()]
+        c.execute('SELECT mac_address, ml, ea, cr, st, total, check_status FROM trust_score')
+        scores = [{"mac_address": row[0], "ml": row[1], "ea": row[2], "cr": row[3], "st": row[4], "total": row[5], "check_status": row[6]} for row in c.fetchall()]
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -190,7 +190,8 @@ def get_trust_score(mac_address):
                 'ea': row[2],
                 'cr': row[3],
                 'st': row[4],
-                'total': row[5]
+                'total': row[5],
+                'check_status': row[6]
             }
             conn.close()
             return jsonify(trust_score), 200
