@@ -59,7 +59,7 @@ def handle_evaluation(device_mac, target_ip, open_ports, result):
 def update_device():
     # Extract data from the POST request
     data = request.get_json()
-    device_mac = data.get('device_mac')
+    device_mac = data.get('mac_address')
     target_ip = data.get('target_ip')
     open_ports = data.get('open_ports')
     result = data.get('result')

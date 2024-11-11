@@ -23,27 +23,79 @@ def get_users():
             conn.close()
     return jsonify(devices)
 
+# @device.route("/api/get_active_devices", methods=["GET"])
+# def get_active_devices():
+#     try:
+#         conn = sqlite3.connect(database_path)
+#         c = conn.cursor()
+#         c.execute('SELECT ip_address, mac_adress, device_name, connected_devices, connected_device_status FROM new_devices WHERE status = "active"')
+#         devices = [{"ip_address": row[0], "mac_address": row[1], "device_name": row[2], "connected_devices": row[3], "connected_device_status": row[4]} for row in c.fetchall()]
+#     except sqlite3.Error as e:
+#         return jsonify({"error": str(e)}), 500
+#     finally:
+#         if conn:
+#             conn.close()
+#     return jsonify(devices)
+
 @device.route("/api/get_active_devices", methods=["GET"])
 def get_active_devices():
     try:
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT ip_address, mac_adress, device_name FROM new_devices WHERE status = "active"')
-        devices = [{"ip_address": row[0], "mac_address": row[1], "device_name": row[2]} for row in c.fetchall()]
+        c.execute('SELECT ip_address, mac_adress, device_name, connected_devices, connected_device_status FROM new_devices WHERE status = "active"')
+        
+        devices = []
+        for row in c.fetchall():
+            try:
+                connected_devices = json.loads(row[3]) if row[3] else []  # Parse connected_devices as JSON list
+            except json.JSONDecodeError:
+                print("Error decoding JSON for connected_devices:", row[3])
+                connected_devices = []  # Default to an empty list if parsing fails
+
+            device = {
+                "ip_address": row[0],
+                "mac_address": row[1],
+                "device_name": row[2],
+                "connected_devices": connected_devices,
+                "connected_device_status": row[4]
+            }
+            devices.append(device)
     except sqlite3.Error as e:
         return jsonify({"error": str(e)}), 500
     finally:
         if conn:
             conn.close()
+    
     return jsonify(devices)
+
 
 def notify_clients(new_mac_address=None):
     try:
         print(new_mac_address)
         conn = sqlite3.connect(database_path)
         c = conn.cursor()
-        c.execute('SELECT ip_address, mac_adress, device_name FROM new_devices WHERE status = "active"')
-        devices = [{"ip_address": row[0], "mac_address": row[1], "device_name": row[2]} for row in c.fetchall()]
+        c.execute('SELECT ip_address, mac_adress, device_name, connected_devices, connected_device_status FROM new_devices WHERE status = "active"')
+        
+        devices = []
+        for row in c.fetchall():
+            try:
+                # Parse connected_devices JSON string into a Python list
+                connected_devices = json.loads(row[3]) if row[3] else []
+            except json.JSONDecodeError:
+                print("Error decoding JSON for connected_devices:", row[3])
+                connected_devices = []  # Default to empty list if JSON decoding fails
+            
+            # Create device dictionary with parsed data
+            device = {
+                "ip_address": row[0],
+                "mac_address": row[1],
+                "device_name": row[2],
+                "connected_devices": connected_devices,
+                "connected_device_status": row[4]
+            }
+            devices.append(device)
+        
+        # Emit the 'update' event via Socket.IO with device list and new MAC address
         socketio = current_app.extensions['socketio']
         socketio.emit('update', {'devices': devices, 'new_mac_address': new_mac_address})
     except sqlite3.Error as e:
@@ -219,6 +271,7 @@ def update_connected_devices(mac_address, connected_device):
         cursor.execute("UPDATE new_devices SET connected_devices = ? WHERE mac_adress = ?",
                        (json.dumps(connected_device), mac_address))
         conn.commit()
+        notify_clients(new_mac_address=mac_address)
         return True
     except sqlite3.Error as e:
         print(f"Database error: {e}")

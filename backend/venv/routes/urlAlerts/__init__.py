@@ -92,6 +92,8 @@ def delete_alert():
         conn.close()
 
 
+
+
 ################# get blacklist ip count ###################
 @urlAlert.route("/api/get_blacklist_mac_count", methods=["GET"])
 def get_blacklist_mac_count():
@@ -163,3 +165,24 @@ def delete_specific_alert():
     finally:
         conn.close()
 ##################################################################
+
+
+@urlAlert.route("/api/delete_alert_by_mac/<mac_address>", methods=["DELETE"])
+def delete_alert_by_mac(mac_address):
+    try:
+        conn = sqlite3.connect(database_path)
+        c = conn.cursor()
+        # Use parameterized query to prevent SQL injection
+        c.execute("DELETE FROM url_alerts WHERE mac_address = ?", (mac_address,))
+        conn.commit()
+        
+        return jsonify({"status": "success"})
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"status": "failure", "error": str(e)}), 500
+    except Exception as e:
+        print(f"Exception in delete_alert: {e}")
+        return jsonify({"status": "failure", "error": str(e)}), 500
+    finally:
+        conn.close()

@@ -236,6 +236,7 @@ def update_status():
         # Call function to update the status in the database
         update_status_in_db(new_status, mac_address)
         return jsonify({"message": "Status updated successfully"}), 200
+        notify_score()
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
